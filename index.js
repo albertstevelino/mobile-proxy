@@ -7,6 +7,7 @@ var http = require('http'),
 
 var proxy = httpProxy.createServer();
 var port = argv.port || 8001;
+var useSingleLayer = +argv['single-layer'];
 
 var server = http.createServer(function (req, res) {
   console.log(`Receiving reverse proxy request for: ${req.url}`);
@@ -21,7 +22,7 @@ server.on('connect', function (req, socket) {
     var serverUrl = url.parse('https://' + req.url);
 
     var srvSocket = net.connect(serverUrl.port, serverUrl.hostname, function() {
-      if (+argv['single-layer']) {
+      if (useSingleLayer) {
         // write the response
         socket.write('HTTP/1.1 200 Connection Established\r\n' +
           'Proxy-agent: Node-Proxy\r\n' +
@@ -32,10 +33,16 @@ server.on('connect', function (req, socket) {
     });
   } catch (error) {
     console.error(error);
+
+    socket.write('HTTP/1.1 500 Connection Error\r\n' +
+      'Proxy-agent: Node-Proxy\r\n' +
+      '\r\n');
+
+    socket.end();
   }
 });
 
 console.log(`mobile proxy server starts on port ${port}`);
-if (+argv['single-layer']) {
+if (useSingleLayer) {
   console.log('Stand alone reverse proxy is active');
 }
